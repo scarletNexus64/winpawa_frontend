@@ -8,6 +8,8 @@ import { GAME_TYPES, validateBetAmount, formatCurrency } from '../config/gameCon
 import GameLayout from '../layouts/GameLayout'
 import AppleOfFortune from '../components/games/AppleOfFortune'
 import ScratchCard from '../components/games/ScratchCard'
+import CoinFlip from '../components/games/CoinFlip'
+import Dice from '../components/games/Dice'
 import toast from 'react-hot-toast'
 
 export default function GamePlay() {
@@ -165,6 +167,18 @@ export default function GamePlay() {
             onBet={handleBet}
             isPlaying={isPlaying}
           />
+        ) : currentGame.type === GAME_TYPES.COIN_FLIP ? (
+          <CoinFlip
+            game={currentGame}
+            onBet={handleBet}
+            isPlaying={isPlaying}
+          />
+        ) : currentGame.type === GAME_TYPES.DICE ? (
+          <Dice
+            game={currentGame}
+            onBet={handleBet}
+            isPlaying={isPlaying}
+          />
         ) : (
           <div className="aspect-video bg-dark-300 rounded-xl flex items-center justify-center mb-6 relative overflow-hidden">
             {gameResult ? (
@@ -186,7 +200,10 @@ export default function GamePlay() {
         )}
 
         {/* Bet Controls - Only show for non-game-specific components */}
-        {currentGame.type !== GAME_TYPES.ROULETTE && currentGame.type !== GAME_TYPES.SCRATCH_CARD && (
+        {currentGame.type !== GAME_TYPES.ROULETTE &&
+         currentGame.type !== GAME_TYPES.SCRATCH_CARD &&
+         currentGame.type !== GAME_TYPES.COIN_FLIP &&
+         currentGame.type !== GAME_TYPES.DICE && (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
