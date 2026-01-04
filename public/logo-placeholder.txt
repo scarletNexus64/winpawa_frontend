@@ -1,0 +1,3 @@
+Copiez votre logo WinPawa (le fichier PNG avec le "W" doré) ici et renommez-le en logo.png
+
+Le logo doit remplacer ce fichier placeholder.
