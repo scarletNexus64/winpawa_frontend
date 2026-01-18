@@ -10,6 +10,9 @@ import AppleOfFortune from '../components/games/AppleOfFortune'
 import ScratchCard from '../components/games/ScratchCard'
 import CoinFlip from '../components/games/CoinFlip'
 import Dice from '../components/games/Dice'
+import RockPaperScissors from '../components/games/RockPaperScissors'
+import TreasureBox from '../components/games/TreasureBox'
+import LuckyNumber from '../components/games/LuckyNumber'
 import toast from 'react-hot-toast'
 
 export default function GamePlay() {
@@ -40,7 +43,22 @@ export default function GamePlay() {
       console.log('⚙️ Settings:', gameData.settings)
       console.log('💵 Min Bet:', gameData.min_bet)
       console.log('💵 Max Bet:', gameData.max_bet)
+      console.log('🔧 Is Configured:', gameData.is_configured)
+      console.log('✅ Is Active:', gameData.is_active)
       console.log('🎮 ================================')
+
+      // Vérifier si le jeu est configuré et actif
+      if (gameData.is_configured === false) {
+        toast.error('Ce jeu est en cours de configuration')
+        navigate('/games')
+        return
+      }
+
+      if (gameData.is_active === false) {
+        toast.error('Ce jeu n\'est pas disponible actuellement')
+        navigate('/games')
+        return
+      }
 
       setCurrentGame(gameData)
       setBetAmount(gameData.min_bet || 100)
@@ -179,6 +197,24 @@ export default function GamePlay() {
             onBet={handleBet}
             isPlaying={isPlaying}
           />
+        ) : currentGame.type === GAME_TYPES.ROCK_PAPER_SCISSORS ? (
+          <RockPaperScissors
+            game={currentGame}
+            onBet={handleBet}
+            isPlaying={isPlaying}
+          />
+        ) : currentGame.type === GAME_TYPES.TREASURE_BOX ? (
+          <TreasureBox
+            game={currentGame}
+            onBet={handleBet}
+            isPlaying={isPlaying}
+          />
+        ) : currentGame.type === GAME_TYPES.LUCKY_NUMBER ? (
+          <LuckyNumber
+            game={currentGame}
+            onBet={handleBet}
+            isPlaying={isPlaying}
+          />
         ) : (
           <div className="aspect-video bg-dark-300 rounded-xl flex items-center justify-center mb-6 relative overflow-hidden">
             {gameResult ? (
@@ -203,7 +239,10 @@ export default function GamePlay() {
         {currentGame.type !== GAME_TYPES.ROULETTE &&
          currentGame.type !== GAME_TYPES.SCRATCH_CARD &&
          currentGame.type !== GAME_TYPES.COIN_FLIP &&
-         currentGame.type !== GAME_TYPES.DICE && (
+         currentGame.type !== GAME_TYPES.DICE &&
+         currentGame.type !== GAME_TYPES.ROCK_PAPER_SCISSORS &&
+         currentGame.type !== GAME_TYPES.TREASURE_BOX &&
+         currentGame.type !== GAME_TYPES.LUCKY_NUMBER && (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">

@@ -4,6 +4,8 @@ import { memo } from 'react'
 
 const GameCard = memo(function GameCard({ game }) {
   const isInactive = game.is_active === false
+  const isNotConfigured = game.is_configured === false
+  const isDisabled = isInactive || isNotConfigured
   const getGameIcon = (type) => {
     const icons = {
       roulette: '🎰',
@@ -40,15 +42,15 @@ const GameCard = memo(function GameCard({ game }) {
     return gradients[type] || 'from-gray-500/20 via-gray-600/20 to-gray-500/20'
   }
 
-  const CardWrapper = isInactive ? 'div' : Link
-  const cardProps = isInactive
+  const CardWrapper = isDisabled ? 'div' : Link
+  const cardProps = isDisabled
     ? { className: "group block cursor-not-allowed" }
     : { to: `/games/${game.slug}`, className: "group block" }
 
   return (
     <CardWrapper {...cardProps}>
       <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-dark-200 to-dark-300 border border-gray-800/50 transition-all duration-500 ${
-        isInactive
+        isDisabled
           ? 'opacity-60 grayscale'
           : 'hover:border-casino-gold/50 hover:shadow-2xl hover:shadow-casino-gold/20 hover:-translate-y-1'
       }`}>
@@ -75,14 +77,16 @@ const GameCard = memo(function GameCard({ game }) {
             </div>
           )}
 
-          {/* Play Button Overlay or Inactive Overlay */}
-          {isInactive ? (
+          {/* Play Button Overlay or Inactive/Not Configured Overlay */}
+          {isDisabled ? (
             <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-3">
               <div className="w-16 h-16 rounded-full bg-gray-700/50 flex items-center justify-center border-2 border-gray-600">
                 <Lock className="w-8 h-8 text-gray-400" />
               </div>
               <div className="px-4 py-1.5 bg-gray-700/70 backdrop-blur-sm border border-gray-600 rounded-full">
-                <span className="text-sm font-bold text-gray-300 uppercase tracking-wide">Coming Soon</span>
+                <span className="text-sm font-bold text-gray-300 uppercase tracking-wide">
+                  {isNotConfigured ? 'En configuration' : 'Bientôt disponible'}
+                </span>
               </div>
             </div>
           ) : (

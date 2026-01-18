@@ -56,6 +56,7 @@ export default defineConfig({
     })
   ],
   server: {
+    host: '0.0.0.0', // Expose sur toutes les interfaces réseau
     port: 3000,
     proxy: {
       '/api': {
