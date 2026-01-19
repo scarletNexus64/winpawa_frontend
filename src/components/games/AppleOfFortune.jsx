@@ -345,12 +345,12 @@ export default function AppleOfFortune({ game, onBet, isPlaying }) {
 
       {/* Game info */}
       <div className="text-center text-sm text-gray-400 space-y-1 mt-6">
-        <p>Faites tourner la roue et tentez de gagner jusqu&apos;à 10x votre mise !</p>
-        {game.settings?.segments && (
-          <p className="text-xs">
-            {game.settings.segments} segments - RTP: {game.rtp}%
-          </p>
-        )}
+        <p className="text-yellow-400 font-semibold">
+          🎰 Multiplicateurs: {game.multipliers?.join('x, ')}x
+        </p>
+        <p className="text-xs text-gray-500">
+          Faites tourner la roue et tentez de gagner jusqu&apos;à 10x votre mise !
+        </p>
       </div>
 
       {/* Result Modal */}

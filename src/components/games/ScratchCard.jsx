@@ -359,9 +359,8 @@ export default function ScratchCard({ game, onBet, isPlaying }) {
       {/* Informations du jeu */}
       <div className="text-center text-sm text-gray-400 space-y-1 mt-6 bg-dark-200 rounded-lg p-4 border border-dark-100">
         <p className="text-yellow-400 font-semibold">
-          🎰 Multiplicateurs: {game.multipliers?.join('x, ')}x
+          🎫 Multiplicateurs: {game.multipliers?.join('x, ')}x
         </p>
-        <p>RTP: {game.rtp}% | Taux de gain: {game.win_frequency}%</p>
         <p className="text-xs text-gray-500">
           Trouvez 3+ symboles identiques pour gagner !
         </p>

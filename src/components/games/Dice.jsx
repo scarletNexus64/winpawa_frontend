@@ -423,9 +423,8 @@ export default function Dice({ game, onBet, isPlaying }) {
       {/* Informations du jeu */}
       <div className="text-center text-sm text-gray-400 space-y-1 mt-6 bg-dark-200 rounded-lg p-4 border border-dark-100">
         <p className="text-yellow-400 font-semibold">
-          🎰 {game.win_frequency}% de chance de gagner | Multiplicateurs: {game.multipliers?.join('x, ')}x
+          🎲 Multiplicateurs: {game.multipliers?.join('x, ')}x
         </p>
-        <p>RTP: {game.rtp}%</p>
         <p className="text-xs text-gray-500">
           Pariez sur pair/impair ou un numéro spécifique !
         </p>

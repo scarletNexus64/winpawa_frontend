@@ -378,9 +378,8 @@ export default function LuckyNumber({ game, onBet, isPlaying }) {
       {/* Informations du jeu */}
       <div className="text-center text-xs sm:text-sm text-gray-400 space-y-1 mt-4 sm:mt-6 bg-dark-200 rounded-lg p-3 sm:p-4 border border-dark-100">
         <p className="text-purple-400 font-semibold text-xs sm:text-sm">
-          🎰 {game.win_frequency}% de chance de gagner | Multiplicateurs: ×{game.multipliers?.join(', ×') || '2, 3'}
+          🔢 Multiplicateurs: ×{game.multipliers?.join(', ×') || '2, 3'}
         </p>
-        <p className="text-xs sm:text-sm">RTP: {game.rtp}%</p>
         <p className="text-[10px] sm:text-xs text-gray-500">
           Devinez le bon nombre parmi {numbers.length} possibilités !
         </p>

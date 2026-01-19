@@ -433,16 +433,15 @@ export default function Jackpot({ game, onBet, isPlaying }) {
           </div>
         </div>
         <p className="text-center text-[10px] sm:text-xs text-gray-400 mt-2">
-          {game.win_frequency}% de chances de tomber sur BONUS
+          Tentez de décrocher le BONUS !
         </p>
       </div>
 
       {/* Informations du jeu */}
       <div className="text-center text-xs sm:text-sm text-gray-400 space-y-1 mt-4 bg-dark-200 rounded-lg p-3 sm:p-4 border border-dark-100">
         <p className="text-yellow-400 font-semibold">
-          🎰 {game.win_frequency}% de chance de gagner
+          🎰 Multiplicateurs: {game.multipliers?.join('x, ')}x
         </p>
-        <p className="text-xs sm:text-sm">RTP: {game.rtp}%</p>
         <p className="text-[10px] sm:text-xs text-gray-500">
           La roue tourne et s&apos;arrête sur un segment - Bonne chance !
         </p>

@@ -15,6 +15,9 @@ import TreasureBox from '../components/games/TreasureBox'
 import LuckyNumber from '../components/games/LuckyNumber'
 import Jackpot from '../components/games/Jackpot'
 import Penalty from '../components/games/Penalty'
+import CourseDesPions from '../components/games/CourseDesPions'
+import Quiz from '../components/games/Quiz'
+import ColorRoulette from '../components/games/ColorRoulette'
 import toast from 'react-hot-toast'
 
 export default function GamePlay() {
@@ -229,6 +232,24 @@ export default function GamePlay() {
             onBet={handleBet}
             isPlaying={isPlaying}
           />
+        ) : currentGame.type === GAME_TYPES.LUDO ? (
+          <CourseDesPions
+            game={currentGame}
+            onBet={handleBet}
+            isPlaying={isPlaying}
+          />
+        ) : currentGame.type === GAME_TYPES.QUIZ ? (
+          <Quiz
+            game={currentGame}
+            onBet={handleBet}
+            isPlaying={isPlaying}
+          />
+        ) : currentGame.type === GAME_TYPES.COLOR_ROULETTE ? (
+          <ColorRoulette
+            game={currentGame}
+            onBet={handleBet}
+            isPlaying={isPlaying}
+          />
         ) : (
           <div className="aspect-video bg-dark-300 rounded-xl flex items-center justify-center mb-6 relative overflow-hidden">
             {gameResult ? (
@@ -258,7 +279,10 @@ export default function GamePlay() {
          currentGame.type !== GAME_TYPES.TREASURE_BOX &&
          currentGame.type !== GAME_TYPES.LUCKY_NUMBER &&
          currentGame.type !== GAME_TYPES.JACKPOT &&
-         currentGame.type !== GAME_TYPES.PENALTY && (
+         currentGame.type !== GAME_TYPES.PENALTY &&
+         currentGame.type !== GAME_TYPES.LUDO &&
+         currentGame.type !== GAME_TYPES.QUIZ &&
+         currentGame.type !== GAME_TYPES.COLOR_ROULETTE && (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">

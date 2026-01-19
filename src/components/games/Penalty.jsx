@@ -670,15 +670,10 @@ export default function Penalty({ game, onBet, isPlaying }) {
       </div>
 
       {/* Informations */}
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4">
         <div className="bg-dark-200/50 backdrop-blur-sm rounded-lg p-3 text-center">
-          <div className="text-xs text-gray-400 mb-1">Taux de réussite</div>
-          <div className="text-lg font-bold text-green-400">{game.win_frequency}%</div>
-        </div>
-
-        <div className="bg-dark-200/50 backdrop-blur-sm rounded-lg p-3 text-center">
-          <div className="text-xs text-gray-400 mb-1">RTP</div>
-          <div className="text-lg font-bold text-yellow-400">{game.rtp}%</div>
+          <div className="text-xs text-gray-400 mb-1">Multiplicateurs</div>
+          <div className="text-lg font-bold text-yellow-400">{game.multipliers?.join('x, ')}x</div>
         </div>
       </div>
 
