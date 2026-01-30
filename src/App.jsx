@@ -18,6 +18,7 @@ import History from './pages/History'
 import Notifications from './pages/Notifications'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import RegisterSuccess from './pages/auth/RegisterSuccess'
 import NotFound from './pages/NotFound'
 
 // Protected Route Component
@@ -80,6 +81,10 @@ function App() {
               </AuthLayout>
             </PublicRoute>
           }
+        />
+        <Route
+          path="/register/success"
+          element={<RegisterSuccess />}
         />
 
         {/* Game Play Route (Fullscreen - Outside MainLayout) */}

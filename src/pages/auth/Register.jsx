@@ -1,324 +1,390 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { User, Mail, Lock, Eye, EyeOff, Users, Calendar } from 'lucide-react'
-import PhoneInput from 'react-phone-number-input'
-import flags from 'react-phone-number-input/flags'
-import 'react-phone-number-input/style.css'
-import { authService } from '../../services/authService'
-import { legalService } from '../../services/legalService'
-import { useAuthStore } from '../../store/authStore'
-import BottomSheet from '../../components/ui/BottomSheet'
-import toast from 'react-hot-toast'
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Phone, Users, Zap } from 'lucide-react';
+import PhoneInput from 'react-phone-number-input';
+import flags from 'react-phone-number-input/flags';
+import 'react-phone-number-input/style.css';
+import { authService } from '../../services/authService';
+import { useAuthStore } from '../../store/authStore';
+import CountrySelector from '../../components/CountrySelector';
+import { getDefaultCurrency } from '../../data/countries';
+import toast from 'react-hot-toast';
 
 export default function Register() {
-  const navigate = useNavigate()
-  const { setLoading } = useAuthStore()
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [phoneNumber, setPhoneNumber] = useState('')
-  const [termsAccepted, setTermsAccepted] = useState(false)
-  const [showTermsSheet, setShowTermsSheet] = useState(false)
-  const [showPrivacySheet, setShowPrivacySheet] = useState(false)
-  const [termsContent, setTermsContent] = useState('')
-  const [privacyContent, setPrivacyContent] = useState('')
-  const [loadingLegal, setLoadingLegal] = useState(false)
+  const navigate = useNavigate();
+  const { setLoading } = useAuthStore();
+  const [activeTab, setActiveTab] = useState('flash'); // 'flash', 'phone', 'email'
+  const [currencies, setCurrencies] = useState([]);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    date_of_birth: '',
-    password: '',
-    password_confirmation: '',
-    referral_code: '',
-  })
+  // Flash registration
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [selectedCurrency, setSelectedCurrency] = useState('XAF');
+  const [referralCodeFlash, setReferralCodeFlash] = useState('');
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
+  // Phone registration
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [referralCodePhone, setReferralCodePhone] = useState('');
 
-  const handleOpenTerms = async (e) => {
-    e.preventDefault()
-    setLoadingLegal(true)
+  // Email registration
+  const [email, setEmail] = useState('');
+  const [referralCodeEmail, setReferralCodeEmail] = useState('');
+
+  useEffect(() => {
+    loadCurrencies();
+  }, []);
+
+  const loadCurrencies = async () => {
     try {
-      const response = await legalService.getTerms()
-      setTermsContent(response.data.content)
-      setShowTermsSheet(true)
+      const response = await authService.getCurrencies();
+      setCurrencies(response.data);
     } catch (error) {
-      toast.error('Impossible de charger les conditions d\'utilisation')
-    } finally {
-      setLoadingLegal(false)
+      console.error('Erreur lors du chargement des devises:', error);
     }
-  }
+  };
 
-  const handleOpenPrivacy = async (e) => {
-    e.preventDefault()
-    setLoadingLegal(true)
+  const handleFlashSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!selectedCountry) {
+      toast.error('Veuillez sélectionner votre pays');
+      return;
+    }
+
     try {
-      const response = await legalService.getPrivacyPolicy()
-      setPrivacyContent(response.data.content)
-      setShowPrivacySheet(true)
+      setLoading(true);
+      const response = await authService.registerFlash({
+        country: selectedCountry.code,
+        currency: selectedCurrency,
+        referral_code: referralCodeFlash || null,
+      });
+
+      console.log('📦 Registration response:', response);
+      console.log('🔑 Credentials received:', response.data.credentials);
+
+      // Store credentials
+      if (response.data.credentials) {
+        toast.success(`Bienvenue ${response.data.user.name} ! 🎉`);
+
+        // Redirect to success page with credentials (login will be called there)
+        navigate('/register/success', {
+          state: {
+            credentials: response.data.credentials,
+            user: response.data.user,
+            token: response.data.token,
+          },
+          replace: true,
+        });
+      } else {
+        console.error('❌ No credentials in response');
+        toast.error('Erreur: identifiants non reçus');
+      }
     } catch (error) {
-      toast.error('Impossible de charger la politique de confidentialité')
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'inscription');
     } finally {
-      setLoadingLegal(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handlePhoneSubmit = async (e) => {
+    e.preventDefault();
 
-    if (!formData.name || !formData.email || !phoneNumber || !formData.date_of_birth || !formData.password) {
-      toast.error('Veuillez remplir tous les champs obligatoires')
-      return
-    }
-
-    if (!termsAccepted) {
-      toast.error('Veuillez accepter les conditions d\'utilisation')
-      return
-    }
-
-    if (formData.password !== formData.password_confirmation) {
-      toast.error('Les mots de passe ne correspondent pas')
-      return
-    }
-
-    if (formData.password.length < 8) {
-      toast.error('Le mot de passe doit contenir au moins 8 caractères')
-      return
-    }
-
-    // Validate age (18+)
-    const birthDate = new Date(formData.date_of_birth)
-    const today = new Date()
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const monthDiff = today.getMonth() - birthDate.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--
-    }
-    if (age < 18) {
-      toast.error('Vous devez avoir au moins 18 ans pour vous inscrire')
-      return
+    if (!phoneNumber) {
+      toast.error('Veuillez entrer votre numéro de téléphone');
+      return;
     }
 
     try {
-      setLoading(true)
-      const data = await authService.register({
-        ...formData,
+      setLoading(true);
+      const response = await authService.registerPhone({
         phone: phoneNumber,
-      })
+        referral_code: referralCodePhone || null,
+      });
 
-      // Store token in localStorage
-      localStorage.setItem('winpawa_token', data.data.token)
-      localStorage.setItem('winpawa_user', JSON.stringify(data.data.user))
+      console.log('📦 Registration response:', response);
+      console.log('🔑 Credentials received:', response.data.credentials);
 
-      toast.success('Inscription réussie ! Veuillez vous connecter')
-      // Redirect to login instead of auto-login
-      navigate('/login', {
-        state: { message: 'Inscription réussie ! Connectez-vous pour continuer' }
-      })
+      // Store credentials
+      if (response.data.credentials) {
+        toast.success(`Bienvenue ${response.data.user.name} ! 🎉`);
+
+        // Redirect to success page with credentials (login will be called there)
+        navigate('/register/success', {
+          state: {
+            credentials: response.data.credentials,
+            user: response.data.user,
+            token: response.data.token,
+          },
+          replace: true,
+        });
+      } else {
+        console.error('❌ No credentials in response');
+        toast.error('Erreur: identifiants non reçus');
+      }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Erreur lors de l\'inscription')
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'inscription');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!email) {
+      toast.error('Veuillez entrer votre email');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await authService.registerEmail({
+        email: email,
+        referral_code: referralCodeEmail || null,
+      });
+
+      console.log('📦 Registration response:', response);
+      console.log('🔑 Credentials received:', response.data.credentials);
+
+      // Store credentials
+      if (response.data.credentials) {
+        toast.success(`Bienvenue ${response.data.user.name} ! 🎉`);
+
+        // Redirect to success page with credentials (login will be called there)
+        navigate('/register/success', {
+          state: {
+            credentials: response.data.credentials,
+            user: response.data.user,
+            token: response.data.token,
+          },
+          replace: true,
+        });
+      } else {
+        console.error('❌ No credentials in response');
+        toast.error('Erreur: identifiants non reçus');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'inscription');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCountryChange = (country) => {
+    setSelectedCountry(country);
+    const defaultCurrency = getDefaultCurrency(country.code);
+    setSelectedCurrency(defaultCurrency);
+  };
 
   return (
     <div>
       <div className="text-center mb-8">
         <h2 className="text-2xl font-gaming font-bold text-white mb-2">
-          Inscription
+          Inscription Rapide
         </h2>
         <p className="text-gray-400">
-          Créez votre compte et profitez du bonus de bienvenue
+          Créez votre compte en quelques secondes
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Nom complet
-          </label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="input pl-11"
-              placeholder="Jean Dupont"
-              required
-            />
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('flash')}
+          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+            activeTab === 'flash'
+              ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
+              : 'bg-gray-800 text-gray-400 hover:bg-gray-750'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Zap className="w-4 h-4" />
+            <span className="hidden sm:inline">Flash</span>
           </div>
-        </div>
-
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Email
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="input pl-11"
-              placeholder="votre@email.com"
-              required
-            />
-          </div>
-        </div>
-
-        {/* Phone with Country Picker */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Téléphone
-          </label>
-          <PhoneInput
-            flags={flags}
-            international
-            defaultCountry="CM"
-            value={phoneNumber}
-            onChange={setPhoneNumber}
-            className="phone-input-custom"
-            placeholder="+237 6XX XXX XXX"
-            required
-          />
-        </div>
-
-        {/* Date of Birth */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Date de naissance
-          </label>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              type="date"
-              name="date_of_birth"
-              value={formData.date_of_birth}
-              onChange={handleChange}
-              className="input pl-11"
-              required
-              max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">Vous devez avoir au moins 18 ans</p>
-        </div>
-
-        {/* Password */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Mot de passe
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="input pl-11 pr-11"
-              placeholder="••••••••"
-              required
-              minLength={8}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-400"
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Confirm Password */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Confirmer le mot de passe
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              type={showConfirmPassword ? 'text' : 'password'}
-              name="password_confirmation"
-              value={formData.password_confirmation}
-              onChange={handleChange}
-              className="input pl-11 pr-11"
-              placeholder="••••••••"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-400"
-            >
-              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Referral Code */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Code promo (optionnel)
-          </label>
-          <div className="relative">
-            <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              type="text"
-              name="referral_code"
-              value={formData.referral_code}
-              onChange={handleChange}
-              className="input pl-11"
-              placeholder="CODE123"
-            />
-          </div>
-        </div>
-
-        {/* Terms */}
-        <div className="flex items-start gap-2">
-          <input
-            type="checkbox"
-            id="terms"
-            className="mt-1"
-            checked={termsAccepted}
-            onChange={(e) => setTermsAccepted(e.target.checked)}
-            required
-          />
-          <label htmlFor="terms" className="text-sm text-gray-400">
-            J'accepte les{' '}
-            <button
-              onClick={handleOpenTerms}
-              className="text-casino-purple hover:underline"
-              disabled={loadingLegal}
-            >
-              conditions d'utilisation
-            </button>{' '}
-            et la{' '}
-            <button
-              onClick={handleOpenPrivacy}
-              className="text-casino-purple hover:underline"
-              disabled={loadingLegal}
-            >
-              politique de confidentialité
-            </button>
-          </label>
-        </div>
-
-        {/* Submit Button */}
-        <button type="submit" className="btn-primary w-full">
-          S'inscrire
         </button>
-      </form>
+
+        <button
+          onClick={() => setActiveTab('phone')}
+          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+            activeTab === 'phone'
+              ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
+              : 'bg-gray-800 text-gray-400 hover:bg-gray-750'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Phone className="w-4 h-4" />
+            <span className="hidden sm:inline">Téléphone</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('email')}
+          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+            activeTab === 'email'
+              ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
+              : 'bg-gray-800 text-gray-400 hover:bg-gray-750'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Mail className="w-4 h-4" />
+            <span className="hidden sm:inline">Email</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Flash Registration */}
+      {activeTab === 'flash' && (
+        <form onSubmit={handleFlashSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Votre pays
+            </label>
+            <CountrySelector
+              value={selectedCountry}
+              onChange={handleCountryChange}
+              onCurrencyChange={setSelectedCurrency}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Devise
+            </label>
+            <select
+              value={selectedCurrency}
+              onChange={(e) => setSelectedCurrency(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              {currencies.map((currency) => (
+                <option key={currency.code} value={currency.code}>
+                  {currency.name} ({currency.symbol})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Code promo (optionnel)
+            </label>
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <input
+                type="text"
+                value={referralCodeFlash}
+                onChange={(e) => setReferralCodeFlash(e.target.value.toUpperCase())}
+                className="input pl-11"
+                placeholder="CODE123"
+              />
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary w-full">
+            S'inscrire maintenant
+          </button>
+
+          {/* <p className="text-xs text-gray-500 text-center">
+            Un nom d'utilisateur unique sera généré automatiquement
+          </p> */}
+        </form>
+      )}
+
+      {/* Phone Registration */}
+      {activeTab === 'phone' && (
+        <form onSubmit={handlePhoneSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Numéro de téléphone
+            </label>
+            <PhoneInput
+              flags={flags}
+              international
+              defaultCountry="CM"
+              value={phoneNumber}
+              onChange={setPhoneNumber}
+              className="phone-input-custom"
+              placeholder="+237 6XX XXX XXX"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Code promo (optionnel)
+            </label>
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <input
+                type="text"
+                value={referralCodePhone}
+                onChange={(e) => setReferralCodePhone(e.target.value.toUpperCase())}
+                className="input pl-11"
+                placeholder="CODE123"
+              />
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary w-full">
+            S'inscrire avec téléphone
+          </button>
+
+          {/* <p className="text-xs text-gray-500 text-center">
+            Un nom d'utilisateur unique sera généré automatiquement
+          </p> */}
+        </form>
+      )}
+
+      {/* Email Registration */}
+      {activeTab === 'email' && (
+        <form onSubmit={handleEmailSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Adresse email
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input pl-11"
+                placeholder="votre@email.com"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Code promo (optionnel)
+            </label>
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <input
+                type="text"
+                value={referralCodeEmail}
+                onChange={(e) => setReferralCodeEmail(e.target.value.toUpperCase())}
+                className="input pl-11"
+                placeholder="CODE123"
+              />
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary w-full">
+            S'inscrire avec email
+          </button>          {/* <p className="text-xs text-gray-500 text-center">
+            Un nom d'utilisateur unique sera généré automatiquement
+          </p>
+
+ */}
+        </form>
+      )}
+
+      {/* Info Box */}
+      <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+        <p className="text-sm text-blue-400 text-center">
+          Vous pourrez compléter votre profil après l'inscription
+        </p>
+      </div>
 
       {/* Divider */}
       <div className="relative my-6">
@@ -339,29 +405,6 @@ export default function Register() {
           </Link>
         </p>
       </div>
-
-      {/* Bottom Sheets for Legal Pages */}
-      <BottomSheet
-        isOpen={showTermsSheet}
-        onClose={() => setShowTermsSheet(false)}
-        title="Conditions d'utilisation"
-      >
-        <div
-          className="prose prose-invert max-w-none text-gray-300"
-          dangerouslySetInnerHTML={{ __html: termsContent }}
-        />
-      </BottomSheet>
-
-      <BottomSheet
-        isOpen={showPrivacySheet}
-        onClose={() => setShowPrivacySheet(false)}
-        title="Politique de confidentialité"
-      >
-        <div
-          className="prose prose-invert max-w-none text-gray-300"
-          dangerouslySetInnerHTML={{ __html: privacyContent }}
-        />
-      </BottomSheet>
     </div>
-  )
+  );
 }

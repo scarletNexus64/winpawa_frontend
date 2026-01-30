@@ -23,19 +23,21 @@ export default function VirtualMatch() {
         virtualMatchService.getUpcoming(),
         virtualMatchService.getLive(),
       ])
-      setUpcomingMatches(upcoming.matches || [])
-      setLiveMatches(live.matches || [])
+      setUpcomingMatches(upcoming.data || [])
+      setLiveMatches(live.data || [])
     } catch (error) {
       console.error('Error loading matches:', error)
+      toast.error('Erreur lors du chargement des matchs')
     }
   }
 
-  const handlePlaceBet = async (matchId, betType) => {
+  const handlePlaceBet = async (matchId, choice) => {
     try {
       const betAmount = 500 // Default bet amount
       await virtualMatchService.placeBet(matchId, {
+        bet_type: 'result',  // Type de pari: result, score, both_score
+        choice: choice,      // Choix: home_win, away_win, draw
         amount: betAmount,
-        bet_type: betType,
       })
       toast.success('Pari placé avec succès !')
       loadMatches()
@@ -53,86 +55,96 @@ export default function VirtualMatch() {
     return odds[betType] || 2.0
   }
 
-  const MatchCard = ({ match, isLive = false }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`card ${isLive ? 'border-casino-red animate-pulse-slow' : ''}`}
-    >
-      {/* Match Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          {isLive && (
-            <span className="flex items-center gap-1 badge badge-red animate-pulse">
-              <span className="w-2 h-2 bg-casino-red rounded-full"></span>
-              LIVE
-            </span>
-          )}
-          <span className="text-sm text-gray-400">
-            {format(new Date(match.start_time), 'HH:mm', { locale: fr })}
+  const MatchCard = ({ match, isLive = false }) => {
+    // Extraire les scores du format "2 - 1" ou afficher 0 si pas de score
+    const scores = match.score && match.score !== 'vs' ? match.score.split(' - ') : ['0', '0']
+    const homeScore = parseInt(scores[0]) || 0
+    const awayScore = parseInt(scores[1]) || 0
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`card ${isLive ? 'border-casino-red animate-pulse-slow' : ''}`}
+      >
+        {/* Match Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {isLive && (
+              <span className="flex items-center gap-1 badge badge-red animate-pulse">
+                <span className="w-2 h-2 bg-casino-red rounded-full"></span>
+                LIVE
+              </span>
+            )}
+            {!isLive && match.countdown > 0 && (
+              <span className="text-sm text-gray-400">
+                Dans {Math.floor(match.countdown / 60)}min
+              </span>
+            )}
+            <span className="text-xs text-gray-500">{match.reference}</span>
+          </div>
+          <span className="badge badge-purple">
+            <Clock className="w-3 h-3 mr-1" />
+            {match.duration}min
           </span>
         </div>
-        <span className="badge badge-purple">
-          <Clock className="w-3 h-3 mr-1" />
-          {match.duration}min
-        </span>
-      </div>
 
-      {/* Teams */}
-      <div className="space-y-3 mb-4">
-        <div className="flex items-center justify-between p-3 bg-dark-300 rounded-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-casino rounded-lg flex items-center justify-center">
-              <span className="text-xl">🏠</span>
+        {/* Teams */}
+        <div className="space-y-3 mb-4">
+          <div className="flex items-center justify-between p-3 bg-dark-300 rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-casino rounded-lg flex items-center justify-center">
+                <span className="text-xl">🏠</span>
+              </div>
+              <span className="font-semibold text-white">{match.team_home}</span>
             </div>
-            <span className="font-semibold text-white">{match.home_team}</span>
+            {(isLive || match.status === 'completed') && (
+              <span className="text-2xl font-bold text-white">{homeScore}</span>
+            )}
           </div>
-          {isLive && match.home_score !== null && (
-            <span className="text-2xl font-bold text-white">{match.home_score}</span>
-          )}
-        </div>
 
-        <div className="flex items-center justify-between p-3 bg-dark-300 rounded-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-casino-blue to-casino-purple rounded-lg flex items-center justify-center">
-              <span className="text-xl">✈️</span>
+          <div className="flex items-center justify-between p-3 bg-dark-300 rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-casino-blue to-casino-purple rounded-lg flex items-center justify-center">
+                <span className="text-xl">✈️</span>
+              </div>
+              <span className="font-semibold text-white">{match.team_away}</span>
             </div>
-            <span className="font-semibold text-white">{match.away_team}</span>
+            {(isLive || match.status === 'completed') && (
+              <span className="text-2xl font-bold text-white">{awayScore}</span>
+            )}
           </div>
-          {isLive && match.away_score !== null && (
-            <span className="text-2xl font-bold text-white">{match.away_score}</span>
-          )}
         </div>
-      </div>
 
-      {/* Betting Options */}
-      {!isLive && match.status === 'upcoming' && (
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => handlePlaceBet(match.id, 'home_win')}
-            className="btn-secondary text-xs py-3"
-          >
-            <div className="font-bold">1</div>
-            <div className="text-casino-gold">{getOdds('home_win')}x</div>
-          </button>
-          <button
-            onClick={() => handlePlaceBet(match.id, 'draw')}
-            className="btn-secondary text-xs py-3"
-          >
-            <div className="font-bold">X</div>
-            <div className="text-casino-gold">{getOdds('draw')}x</div>
-          </button>
-          <button
-            onClick={() => handlePlaceBet(match.id, 'away_win')}
-            className="btn-secondary text-xs py-3"
-          >
-            <div className="font-bold">2</div>
-            <div className="text-casino-gold">{getOdds('away_win')}x</div>
-          </button>
-        </div>
-      )}
-    </motion.div>
-  )
+        {/* Betting Options */}
+        {!isLive && match.status === 'upcoming' && match.is_open_for_bets && (
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => handlePlaceBet(match.id, 'home_win')}
+              className="btn-secondary text-xs py-3"
+            >
+              <div className="font-bold">1</div>
+              <div className="text-casino-gold">{match.multipliers?.home_win || 2.0}x</div>
+            </button>
+            <button
+              onClick={() => handlePlaceBet(match.id, 'draw')}
+              className="btn-secondary text-xs py-3"
+            >
+              <div className="font-bold">X</div>
+              <div className="text-casino-gold">{match.multipliers?.draw || 3.5}x</div>
+            </button>
+            <button
+              onClick={() => handlePlaceBet(match.id, 'away_win')}
+              className="btn-secondary text-xs py-3"
+            >
+              <div className="font-bold">2</div>
+              <div className="text-casino-gold">{match.multipliers?.away_win || 2.0}x</div>
+            </button>
+          </div>
+        )}
+      </motion.div>
+    )
+  }
 
   return (
     <div className="space-y-6">

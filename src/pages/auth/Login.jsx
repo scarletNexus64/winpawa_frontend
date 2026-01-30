@@ -11,7 +11,7 @@ export default function Login() {
   const { login, setLoading } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
-    email: '',
+    identifier: '', // Email, phone or username
     password: '',
   })
 
@@ -34,7 +34,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.email || !formData.password) {
+    if (!formData.identifier || !formData.password) {
       toast.error('Veuillez remplir tous les champs')
       return
     }
@@ -73,20 +73,20 @@ export default function Login() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Email */}
+        {/* Identifier */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Email
+            Email, téléphone ou nom d'utilisateur
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              name="identifier"
+              value={formData.identifier}
               onChange={handleChange}
               className="input pl-11"
-              placeholder="votre@email.com"
+              placeholder="email@example.com ou +237xxx ou Panda35"
               required
             />
           </div>

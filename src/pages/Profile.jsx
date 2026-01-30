@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { User, Mail, Phone, Lock, Copy, Check } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { authService } from '../services/authService'
+import Avatar from '../components/Avatar'
 import toast from 'react-hot-toast'
 
 export default function Profile() {
@@ -64,6 +65,21 @@ export default function Profile() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-3xl font-gaming font-bold text-white">Mon Profil</h1>
+
+      {/* Profile Header with Avatar */}
+      <div className="card">
+        <div className="flex items-center gap-6 mb-6">
+          <Avatar
+            src={user?.avatar}
+            name={user?.name}
+            size="3xl"
+          />
+          <div>
+            <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
+            <p className="text-gray-400">{user?.email || user?.phone}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Profile Info */}
       <div className="card">

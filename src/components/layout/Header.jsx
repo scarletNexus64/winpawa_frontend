@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { walletService } from '../../services/walletService'
 import BottomSheet from '../ui/BottomSheet'
 import DepositOptions from '../wallet/DepositOptions'
+import Avatar from '../Avatar'
 
 export default function Header() {
   const { user, logout } = useAuthStore()
@@ -116,9 +117,11 @@ export default function Header() {
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex items-center gap-2 p-2 rounded-xl hover:bg-dark-200 transition-colors"
                   >
-                    <div className="w-8 h-8 bg-gradient-casino rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-white" />
-                    </div>
+                    <Avatar
+                      src={user.avatar}
+                      name={user.name}
+                      size="md"
+                    />
                     <span className="hidden sm:block text-sm font-medium text-gray-300">
                       {user.name}
                     </span>
@@ -155,10 +158,16 @@ export default function Header() {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link to="/login" className="px-4 md:px-6 py-2 md:py-2.5 bg-gradient-to-r from-casino-gold to-casino-gold-dark text-dark-500 font-bold rounded-xl shadow-lg hover:shadow-casino-gold/50 hover:scale-105 transition-all text-xs md:text-sm">
+                <Link
+                  to="/login"
+                  className="px-3 md:px-5 py-2 md:py-2.5 bg-dark-200 text-white font-semibold rounded-xl hover:bg-dark-100 transition-all border border-gray-700 text-xs md:text-sm"
+                >
                   Connexion
                 </Link>
-                <Link to="/register" className="hidden sm:block px-4 py-2 bg-dark-200 text-gray-300 font-medium text-sm rounded-xl hover:bg-dark-100 hover:text-white transition-all border border-gray-800/50">
+                <Link
+                  to="/register"
+                  className="px-3 md:px-5 py-2 md:py-2.5 bg-gradient-to-r from-casino-gold to-casino-gold-dark text-dark-500 font-bold rounded-xl shadow-lg hover:shadow-casino-gold/50 hover:scale-105 transition-all text-xs md:text-sm"
+                >
                   Inscription
                 </Link>
               </div>
