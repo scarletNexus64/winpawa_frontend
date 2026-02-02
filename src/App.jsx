@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useAuthStore } from './store/authStore'
+import InstallPWA from './components/InstallPWA'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -59,6 +60,9 @@ function App() {
           },
         }}
       />
+
+      {/* PWA Install Prompt */}
+      <InstallPWA />
 
       <Routes>
         {/* Auth Routes */}

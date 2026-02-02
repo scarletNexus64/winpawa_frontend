@@ -7,17 +7,26 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logo.png'],
+      registerType: 'prompt',
+      includeAssets: ['favicon.ico', 'logo.png', 'logo.svg'],
       manifest: {
         name: 'WinPawa - Casino Gaming',
         short_name: 'WinPawa',
-        description: 'Plateforme de jeux casino au Cameroun',
+        description: 'Plateforme de jeux casino au Cameroun. Jouez et gagnez avec MTN Mobile Money et Orange Money.',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
+        lang: 'fr',
+        categories: ['entertainment', 'games', 'lifestyle'],
         icons: [
+          {
+            src: '/pwa-64x64.png',
+            sizes: '64x64',
+            type: 'image/png'
+          },
           {
             src: '/pwa-192x192.png',
             sizes: '192x192',
@@ -26,7 +35,22 @@ export default defineConfig({
           {
             src: '/pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ],
+        screenshots: [
+          {
+            src: '/screenshot-mobile.png',
+            sizes: '390x844',
+            type: 'image/png',
+            form_factor: 'narrow'
           }
         ]
       },
@@ -56,13 +80,7 @@ export default defineConfig({
     })
   ],
   server: {
-    host: '0.0.0.0', // Expose sur toutes les interfaces réseau
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      }
-    }
+    host: '0.0.0.0',
+    port: 3000
   }
 })

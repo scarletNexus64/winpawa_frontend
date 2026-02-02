@@ -30,4 +30,29 @@ export const virtualMatchService = {
     const response = await api.get('/virtual-match/my-bets', { params })
     return response.data
   },
+
+  // Get user's match history (completed matches)
+  // params: { my_bets_only: boolean, search: string, per_page: number, page: number }
+  getMyHistory: async (params = {}) => {
+    const response = await api.get('/virtual-match/my-history', { params })
+    return response.data
+  },
+
+  // Get user's bets for a specific match
+  getMatchBets: async (matchId) => {
+    const response = await api.get(`/virtual-match/${matchId}/my-bets`)
+    return response.data
+  },
+
+  // Update a bet (only if match hasn't started)
+  updateBet: async (betId, data) => {
+    const response = await api.put(`/virtual-match/bets/${betId}`, data)
+    return response.data
+  },
+
+  // Delete a bet (only if match hasn't started)
+  deleteBet: async (betId) => {
+    const response = await api.delete(`/virtual-match/bets/${betId}`)
+    return response.data
+  },
 }

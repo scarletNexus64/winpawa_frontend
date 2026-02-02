@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://10.38.76.65:8001/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://admin-winpawa.sbs/api'
 
 // Create axios instance
 const api = axios.create({
