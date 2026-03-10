@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Volume2, VolumeX, Maximize2, Minimize2 } from 'lucide-react'
+import { Volume2, VolumeX, Maximize2, Minimize2 } from 'lucide-react'
 import { useWalletStore } from '../store/walletStore'
+import { useAudioStore } from '../store/audioStore'
 import { formatCurrency } from '../config/gameConfig'
 import PropTypes from 'prop-types'
 
@@ -11,7 +12,7 @@ import PropTypes from 'prop-types'
 export default function GameLayout({ children, game, onExit }) {
   const navigate = useNavigate()
   const wallet = useWalletStore((state) => state.wallet)
-  const [isMuted, setIsMuted] = useState(false)
+  const { isMuted, toggleMute } = useAudioStore()
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   // Debug: Log wallet changes
@@ -38,10 +39,6 @@ export default function GameLayout({ children, game, onExit }) {
     }
   }
 
-  const toggleMute = () => {
-    setIsMuted(!isMuted)
-  }
-
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-dark-400 via-dark-300 to-dark-400 overflow-hidden">
       {/* Animated background */}
@@ -54,20 +51,11 @@ export default function GameLayout({ children, game, onExit }) {
       {/* Top bar */}
       <div className="relative z-50 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          {/* Exit button */}
-          <button
-            onClick={handleExit}
-            className="w-12 h-12 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50 rounded-xl flex items-center justify-center transition-all group"
-          >
-            <X className="w-6 h-6 text-red-400 group-hover:text-red-300" />
-          </button>
-
           {/* Game title */}
           <div>
-            <h1 className="text-xl font-gaming font-bold text-white drop-shadow-lg">
+            <h1 className="text-base sm:text-xl font-gaming font-bold text-white drop-shadow-lg whitespace-nowrap">
               {game?.name}
             </h1>
-            <p className="text-xs text-gray-400">RTP: {game?.rtp}%</p>
           </div>
         </div>
 

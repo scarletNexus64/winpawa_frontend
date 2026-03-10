@@ -121,13 +121,10 @@ export default function GameResultModal({ result, onClose }) {
               </div>
             )}
 
-            {/* Close button */}
-            <button
-              onClick={handleClose}
-              className="mt-4 sm:mt-6 px-6 sm:px-8 py-2.5 sm:py-3 bg-white/20 hover:bg-white/30 text-white text-sm sm:text-base font-semibold rounded-lg transition-colors"
-            >
-              Continuer à jouer
-            </button>
+            {/* Auto close indicator */}
+            <div className="mt-4 sm:mt-6 text-white/60 text-xs sm:text-sm">
+              Se ferme automatiquement...
+            </div>
           </div>
 
           {/* Confetti effect for wins */}

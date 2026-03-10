@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react'
+import { useAudioStore } from '../store/audioStore'
 
 /**
  * Custom hook for game audio management
@@ -7,6 +8,7 @@ import { useRef, useEffect } from 'react'
 export const useGameAudio = () => {
   const audioContextRef = useRef(null)
   const soundsRef = useRef({})
+  const { isMuted, volume } = useAudioStore()
 
   useEffect(() => {
     // Initialize AudioContext
@@ -29,7 +31,7 @@ export const useGameAudio = () => {
    * Create oscillator-based sound effect
    */
   const createTone = (frequency, duration, type = 'sine') => {
-    if (!audioContextRef.current) return
+    if (!audioContextRef.current || isMuted) return
 
     const ctx = audioContextRef.current
     const oscillator = ctx.createOscillator()
@@ -41,7 +43,8 @@ export const useGameAudio = () => {
     oscillator.frequency.value = frequency
     oscillator.type = type
 
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime)
+    const baseVolume = 0.3 * volume
+    gainNode.gain.setValueAtTime(baseVolume, ctx.currentTime)
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration)
 
     oscillator.start(ctx.currentTime)
@@ -52,7 +55,7 @@ export const useGameAudio = () => {
    * Play spinning sound (continuous loop)
    */
   const playSpinSound = () => {
-    if (!audioContextRef.current) return
+    if (!audioContextRef.current || isMuted) return
 
     const ctx = audioContextRef.current
     const oscillator = ctx.createOscillator()
@@ -70,7 +73,8 @@ export const useGameAudio = () => {
     filter.frequency.value = 1000
     filter.Q.value = 10
 
-    gainNode.gain.setValueAtTime(0.15, ctx.currentTime)
+    const baseVolume = 0.15 * volume
+    gainNode.gain.setValueAtTime(baseVolume, ctx.currentTime)
 
     // Create acceleration effect
     oscillator.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 1)
@@ -86,7 +90,7 @@ export const useGameAudio = () => {
    * Play win sound
    */
   const playWinSound = () => {
-    if (!audioContextRef.current) return
+    if (!audioContextRef.current || isMuted) return
 
     const ctx = audioContextRef.current
 
@@ -104,7 +108,8 @@ export const useGameAudio = () => {
         oscillator.frequency.value = freq
         oscillator.type = 'triangle'
 
-        gainNode.gain.setValueAtTime(0.3, ctx.currentTime)
+        const baseVolume = 0.3 * volume
+        gainNode.gain.setValueAtTime(baseVolume, ctx.currentTime)
         gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5)
 
         oscillator.start(ctx.currentTime)
@@ -117,7 +122,7 @@ export const useGameAudio = () => {
    * Play lose sound
    */
   const playLoseSound = () => {
-    if (!audioContextRef.current) return
+    if (!audioContextRef.current || isMuted) return
 
     const ctx = audioContextRef.current
 
@@ -132,7 +137,8 @@ export const useGameAudio = () => {
     oscillator.frequency.setValueAtTime(400, ctx.currentTime)
     oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.8)
 
-    gainNode.gain.setValueAtTime(0.2, ctx.currentTime)
+    const baseVolume = 0.2 * volume
+    gainNode.gain.setValueAtTime(baseVolume, ctx.currentTime)
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8)
 
     oscillator.start(ctx.currentTime)
