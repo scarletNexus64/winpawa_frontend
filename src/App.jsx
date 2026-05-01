@@ -12,6 +12,8 @@ import Home from './pages/Home'
 import Games from './pages/Games'
 import GamePlay from './pages/GamePlay'
 import VirtualMatch from './pages/VirtualMatch'
+import Sport from './pages/Sport'
+import Paris from './pages/Paris'
 import Wallet from './pages/Wallet'
 import Profile from './pages/Profile'
 import Affiliate from './pages/Affiliate'
@@ -106,6 +108,8 @@ function App() {
           <Route index element={<Home />} />
           <Route path="games" element={<Games />} />
           <Route path="virtual-match" element={<VirtualMatch />} />
+          <Route path="sports" element={<Sport />} />
+          <Route path="paris" element={<Paris />} />
           <Route path="notifications" element={<Notifications />} />
 
           {/* Protected Routes */}

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, memo, useRef } from 'react'
 import { Trophy, Clock, TrendingUp, Play, CircleDot, Timer, RefreshCw, History, TrendingDown, Award, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { virtualMatchService } from '../services/virtualMatchService'
+import { sportService } from '../services/sportService'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
@@ -10,7 +11,14 @@ import { useWallet } from '../hooks/useWallet'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://10.38.76.65:8000'
 
-console.log('🔧 [VirtualMatch] Module chargé', { API_BASE_URL })
+// Helper: résoudre l'URL d'un logo (supporte URLs externes TheSportsDB et logos locaux)
+const resolveLogoUrl = (logo) => {
+  if (!logo) return null
+  if (logo.startsWith('http://') || logo.startsWith('https://')) return logo
+  return `${API_BASE_URL}/images/${logo}`
+}
+
+// Debug logs disabled for production performance
 
 export default function VirtualMatch() {
   const [upcomingMatches, setUpcomingMatches] = useState([])
@@ -37,18 +45,13 @@ export default function VirtualMatch() {
   const [historyPage, setHistoryPage] = useState(1)
   const [historyMeta, setHistoryMeta] = useState(null)
 
-  console.log('🔄 [VirtualMatch] Component render', {
-    upcomingCount: upcomingMatches.length,
-    liveCount: liveMatches.length,
-    activeTab,
-    currentTime: new Date(currentTime).toLocaleTimeString()
-  })
+  // Render log removed for performance
 
   // Demander la permission pour les notifications
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().then(permission => {
-        console.log('📢 [Notification] Permission:', permission)
+        // log removed
       })
     }
   }, [])
@@ -126,7 +129,7 @@ export default function VirtualMatch() {
   }, [upcomingMatches])
 
   const sendNotification = (title, body, matchId) => {
-    console.log('📢 [Notification] Envoi:', { title, body, matchId })
+    // log removed
 
     if ('Notification' in window && Notification.permission === 'granted') {
       const notification = new Notification(title, {
@@ -152,124 +155,200 @@ export default function VirtualMatch() {
     }
   }
 
+  // Normaliser un match sport (de sport_matches) vers le format attendu par les cards
+  const normalizeSportMatch = (m) => ({
+    id: `sport-${m.id}`,
+    _sport_id: m.id,
+    reference: m.api_event_id ? `TSB-${m.api_event_id}` : `SP-${m.id}`,
+    team_home: m.home_team,
+    team_away: m.away_team,
+    team_home_logo: m.home_logo,
+    team_away_logo: m.away_logo,
+    sport_type: m.sport?.type || 'football',
+    league: m.league,
+    league_badge: m.league_badge,
+    season: m.season,
+    duration: 90,
+    status: m.status === 'upcoming' ? 'upcoming' : m.status === 'live' ? 'live' : 'completed',
+    status_label: m.status === 'upcoming' ? 'À venir' : m.status === 'live' ? 'En direct' : 'Terminé',
+    score: m.status === 'upcoming' ? 'vs' : `${m.home_score ?? 0} - ${m.away_score ?? 0}`,
+    score_home: m.home_score ?? 0,
+    score_away: m.away_score ?? 0,
+    result: m.home_score > m.away_score ? 'home_win' : m.away_score > m.home_score ? 'away_win' : 'draw',
+    starts_at: m.match_time,
+    ends_at: null,
+    countdown: Math.max(0, Math.floor((new Date(m.match_time).getTime() - Date.now()) / 1000)),
+    is_open_for_bets: m.status === 'upcoming',
+    bet_closure_seconds: 60,
+    min_bet_amount: 100,
+    max_bet_amount: 500000,
+    available_markets: ['result', 'both_teams_score', 'over_under', 'double_chance', 'exact_score'],
+    odds: m.odds ? {
+      result: {
+        home_win: { label: '1', description: `Victoire ${m.home_team}`, odd: m.odds['1'] || 2.0 },
+        draw: { label: 'X', description: 'Match nul', odd: m.odds['X'] || 3.5 },
+        away_win: { label: '2', description: `Victoire ${m.away_team}`, odd: m.odds['2'] || 2.0 },
+      },
+      double_chance: {
+        '1X': { label: '1X', description: `${m.home_team} ou Nul`, odd: m.odds['1X'] || 1.3 },
+        'X2': { label: 'X2', description: `Nul ou ${m.away_team}`, odd: m.odds['X2'] || 1.3 },
+        '12': { label: '12', description: 'Pas de nul', odd: m.odds['12'] || 1.2 },
+      },
+      both_teams_score: {
+        yes: { label: 'Oui', description: 'Les deux marquent', odd: m.odds['btts_yes'] || 1.8 },
+        no: { label: 'Non', description: 'Au moins une ne marque pas', odd: m.odds['btts_no'] || 2.0 },
+      },
+      over_under: {
+        over_1_5: { label: '+1.5', description: '2 buts ou plus', odd: m.odds['+1.5'] || 1.4 },
+        under_1_5: { label: '-1.5', description: '0 ou 1 but', odd: m.odds['-1.5'] || 3.0 },
+        over_2_5: { label: '+2.5', description: '3 buts ou plus', odd: m.odds['+2.5'] || 1.9 },
+        under_2_5: { label: '-2.5', description: '0 à 2 buts', odd: m.odds['-2.5'] || 2.0 },
+      },
+    } : null,
+    match_events: [],
+    venue: m.venue,
+    country: m.country,
+    round: m.round,
+    api_source: 'thesportsdb',
+    is_real_match: true,
+  })
+
   // Définir loadMatches et loadHistory AVANT le useEffect principal
   const loadMatches = useCallback(async (showToast = false) => {
-    console.log('📥 [loadMatches] Début du chargement', { showToast })
+    // log removed
     try {
       setIsRefreshing(true)
-      console.log('🌐 [API] Appel API pour upcoming et live...')
 
-      const [upcoming, live] = await Promise.all([
-        virtualMatchService.getUpcoming(),
-        virtualMatchService.getLive(),
+      // Charger les vrais matchs (sportService) ET les matchs virtuels en parallèle
+      const [sportUpcoming, sportLive, virtualUpcoming, virtualLive] = await Promise.all([
+        sportService.getMatches().catch(() => ({ data: [] })),
+        sportService.getLiveMatches().catch(() => ({ data: [] })),
+        virtualMatchService.getUpcoming().catch(() => ({ data: [] })),
+        virtualMatchService.getLive().catch(() => ({ data: [] })),
       ])
 
-      console.log('✅ [API] Réponse reçue:', {
-        upcomingCount: upcoming.data?.length || 0,
-        liveCount: live.data?.length || 0
-      })
+      // Normaliser les matchs sport vers le format attendu
+      const realUpcoming = (sportUpcoming.data || []).map(normalizeSportMatch)
+      const realLive = (sportLive.data || []).map(normalizeSportMatch)
 
-      setUpcomingMatches(upcoming.data || [])
-      setLiveMatches(live.data || [])
+      // Fusionner : vrais matchs en premier, puis virtuels
+      const allUpcoming = [...realUpcoming, ...(virtualUpcoming.data || [])]
+      const allLive = [...realLive, ...(virtualLive.data || [])]
+
+      setUpcomingMatches(allUpcoming)
+      setLiveMatches(allLive)
 
       if (showToast) {
         toast.success('Matchs actualisés')
       }
     } catch (error) {
-      console.error('❌ [API] Error loading matches:', error)
+
       if (showToast) {
         toast.error('Erreur lors du chargement des matchs')
       }
     } finally {
       setIsRefreshing(false)
-      console.log('📥 [loadMatches] Fin du chargement')
     }
   }, [])
 
   const loadHistory = useCallback(async (showToast = false, page = 1) => {
-    console.log('📜 [loadHistory] Début du chargement de l\'historique', { page, filter: historyFilter, search: searchQuery })
+    // log removed
     try {
       setIsLoadingHistory(true)
-      const params = {
-        my_bets_only: historyFilter === 'my_bets',
-        search: searchQuery || undefined,
-        page,
-        per_page: 20,
-      }
-      const history = await virtualMatchService.getMyHistory(params)
-      console.log('✅ [API] Historique reçu:', { count: history.data?.length || 0, meta: history.meta })
-      setHistoryMatches(history.data || [])
-      setHistoryMeta(history.meta || null)
+
+      // Charger résultats sport + historique virtuel en parallèle
+      const [sportFinished, virtualHistory] = await Promise.all([
+        sportService.getFinishedMatches().catch(() => ({ data: [] })),
+        virtualMatchService.getMyHistory({
+          my_bets_only: historyFilter === 'my_bets',
+          search: searchQuery || undefined,
+          page,
+          per_page: 20,
+        }).catch(() => ({ data: [], meta: null })),
+      ])
+
+      // Normaliser les matchs sport terminés vers le format historique
+      const realFinished = (sportFinished.data || []).map(m => ({
+        match: normalizeSportMatch(m),
+        has_bets: false,
+        bets: [],
+        summary: null,
+      }))
+
+      // Fusionner : vrais résultats + historique virtuel
+      const allHistory = [...realFinished, ...(virtualHistory.data || [])]
+
+      setHistoryMatches(allHistory)
+      setHistoryMeta(virtualHistory.meta || null)
       setHistoryPage(page)
       hasLoadedHistory.current = true
       if (showToast) {
         toast.success('Historique actualisé')
       }
     } catch (error) {
-      console.error('❌ [API] Error loading history:', error)
-      // Si erreur 401 (non authentifié), ne pas afficher de toast d'erreur
+
       if (error.response?.status === 401) {
-        console.log('⚠️ [loadHistory] Utilisateur non authentifié')
+
       } else if (showToast) {
         toast.error('Erreur lors du chargement de l\'historique')
       }
     } finally {
       setIsLoadingHistory(false)
-      console.log('📜 [loadHistory] Fin du chargement')
+      // log removed
     }
   }, [historyFilter, searchQuery])
 
   useEffect(() => {
-    console.log('🚀 [VirtualMatch] useEffect - Initialisation')
+    // log removed
 
     // Initial load
     loadMatches()
 
     // Setup WebSocket connection with Laravel Echo + Reverb
-    console.log('🔌 [WebSocket] Connexion au channel virtual-matches...')
+    // log removed
     const channel = echo.channel('virtual-matches')
 
     // Vérifier la connexion après 2 secondes
     setTimeout(() => {
       if (echo.connector && echo.connector.pusher) {
         const state = echo.connector.pusher.connection.state
-        console.log('🔍 [WebSocket] État de connexion après 2s:', state)
+        // log removed
         if (state !== 'connected') {
-          console.warn('⚠️ [WebSocket] Pas connecté ! État:', state)
-          console.warn('⚠️ Vérifiez que Reverb tourne : php artisan reverb:start --host=0.0.0.0 --port=8080')
+
+
         }
       }
     }, 2000)
 
-    console.log('👂 [WebSocket] Configuration des listeners...')
+    // log removed
 
     // 🆕 Écouter la création d'un nouveau match
     channel.listen('.match.created', (data) => {
-      console.log('🆕 [WebSocket] Match created EVENT reçu:', data)
+      // log removed
       toast.success(`Nouveau match disponible : ${data.match.team_home} vs ${data.match.team_away}`, {
         icon: '⚽',
         duration: 4000,
       })
-      console.log('🔄 [WebSocket] Ajout du nouveau match à la liste')
+      // log removed
 
       // Ajouter le nouveau match à la liste appropriée selon son statut
       if (data.match.status === 'upcoming') {
         setUpcomingMatches(prev => {
           // Vérifier si le match n'existe pas déjà
           if (prev.some(m => m.id === data.match.id)) {
-            console.log('⚠️ [WebSocket] Match déjà présent dans upcoming, ignoré')
+
             return prev
           }
-          console.log('✅ [WebSocket] Nouveau match ajouté à upcoming')
+
           return [...prev, data.match]
         })
       } else if (data.match.status === 'live') {
         setLiveMatches(prev => {
           if (prev.some(m => m.id === data.match.id)) {
-            console.log('⚠️ [WebSocket] Match déjà présent dans live, ignoré')
+
             return prev
           }
-          console.log('✅ [WebSocket] Nouveau match ajouté à live')
+
           return [...prev, data.match]
         })
       }
@@ -277,12 +356,12 @@ export default function VirtualMatch() {
 
     // Écouter l'événement de démarrage d'un match
     channel.listen('.match.started', (data) => {
-      console.log('🎮 [WebSocket] Match started EVENT reçu:', data)
+      // log removed
       toast.success(`Match démarré : ${data.match.team_home} vs ${data.match.team_away}`, {
         icon: '🔴',
         duration: 4000,
       })
-      console.log('🔄 [WebSocket] Déplacement du match vers LIVE et bascule vers onglet En direct')
+      // log removed
 
       // Retirer de upcoming et ajouter à live
       setUpcomingMatches(prev => prev.filter(m => m.id !== data.match.id))
@@ -294,41 +373,23 @@ export default function VirtualMatch() {
 
     // Écouter les mises à jour de score en temps réel
     channel.listen('.match.updated', (data) => {
-      console.log('⚡ [WebSocket] Match updated EVENT reçu:', data)
-      console.log('📊 [WebSocket] Données complètes du match:', data.match)
-      console.log('📊 [WebSocket] Mise à jour du score:', {
-        matchId: data.match.id,
-        scoreHome: data.match.score_home,
-        scoreAway: data.match.score_away,
-        event: data.event
-      })
-
       // Mettre à jour le match dans la liste des matchs live SANS recharger
       setLiveMatches((prevMatches) => {
-        console.log('🔄 [State] Mise à jour de liveMatches (avant):', prevMatches.length)
-        const updated = prevMatches.map((match) => {
+        return prevMatches.map((match) => {
           if (match.id === data.match.id) {
-            const updatedMatch = {
+            return {
               ...match,
               ...data.match,
               score: `${data.match.score_home} - ${data.match.score_away}`
             }
-            console.log('✅ [State] Match mis à jour:', {
-              id: updatedMatch.id,
-              score_home: updatedMatch.score_home,
-              score_away: updatedMatch.score_away,
-            })
-            return updatedMatch
           }
           return match
         })
-        console.log('🔄 [State] Mise à jour de liveMatches (après):', updated.length)
-        return updated
       })
 
       // Afficher une notification si un événement spécifique s'est produit
       if (data.event) {
-        console.log('🎯 [Event] Événement spécifique détecté:', data.event.type)
+        // log removed
         if (data.event.type === 'goal') {
           toast.success(`⚽ But ! ${data.event.team_name} (${data.match.score_home}-${data.match.score_away})`, {
             duration: 3000,
@@ -343,8 +404,8 @@ export default function VirtualMatch() {
 
     // ✏️ Écouter la modification d'un match
     channel.listen('.match.edited', (data) => {
-      console.log('✏️ [WebSocket] Match edited EVENT reçu:', data)
-      console.log('🔄 [WebSocket] Mise à jour du match dans la liste')
+
+      // log removed
 
       // Mettre à jour le match dans la liste appropriée selon son nouveau statut
       const updatedMatch = data.match
@@ -390,7 +451,7 @@ export default function VirtualMatch() {
 
     // Écouter la fin d'un match
     channel.listen('.match.completed', (data) => {
-      console.log('🏁 [WebSocket] Match completed EVENT reçu:', data)
+      // log removed
       toast.success(
         `Match terminé : ${data.match.team_home} ${data.match.score_home}-${data.match.score_away} ${data.match.team_away}`,
         {
@@ -398,7 +459,7 @@ export default function VirtualMatch() {
           duration: 5000,
         }
       )
-      console.log('🔄 [WebSocket] Retrait du match de LIVE')
+      // log removed
 
       // Retirer de live
       setLiveMatches(prev => prev.filter(m => m.id !== data.match.id))
@@ -410,16 +471,22 @@ export default function VirtualMatch() {
       }, 1000)
     })
 
-    console.log('⏰ [Timer] Démarrage du timer de countdown (1s)')
+
     // Update countdown every second
     const timeInterval = setInterval(() => {
       const newTime = Date.now()
-      console.log('⏱️ [Timer] Mise à jour currentTime:', new Date(newTime).toLocaleTimeString())
+      // Timer log removed
       setCurrentTime(newTime)
     }, 1000)
 
+    // Auto-refresh des vrais matchs toutes les 2 minutes (pas de WebSocket pour eux)
+    const sportRefreshInterval = setInterval(() => {
+      // log removed
+      loadMatches()
+    }, 120000) // 2 minutes
+
     return () => {
-      console.log('🧹 [Cleanup] Nettoyage des listeners et timer')
+      // log removed
       // Cleanup WebSocket listeners
       channel.stopListening('.match.created')
       channel.stopListening('.match.started')
@@ -428,21 +495,22 @@ export default function VirtualMatch() {
       channel.stopListening('.match.completed')
       echo.leaveChannel('virtual-matches')
       clearInterval(timeInterval)
+      clearInterval(sportRefreshInterval)
     }
-  }, [loadMatches, loadHistory])
+  }, [loadMatches])
 
   // Charger l'historique quand on bascule sur l'onglet (une seule fois)
   useEffect(() => {
     if (activeTab === 'history' && !hasLoadedHistory.current && !isLoadingHistory) {
-      console.log('📜 [useEffect] Chargement initial de l\'historique')
+      // log removed
       loadHistory()
     }
-  }, [activeTab, isLoadingHistory, loadHistory])
+  }, [activeTab])
 
   // Recharger l'historique quand les filtres changent
   useEffect(() => {
     if (activeTab === 'history' && hasLoadedHistory.current) {
-      console.log('🔄 [useEffect] Rechargement de l\'historique (filtres modifiés)')
+      // log removed
       setHistoryPage(1)
       loadHistory(false, 1)
     }
@@ -457,7 +525,7 @@ export default function VirtualMatch() {
     } catch (error) {
       // Silencieux si non connecté
       if (error.response?.status !== 401) {
-        console.error('❌ Erreur chargement paris match:', error)
+
       }
       return []
     }
@@ -474,7 +542,7 @@ export default function VirtualMatch() {
   }, [matchBets, loadMatchBets])
 
   const handlePlaceBet = useCallback(async (matchId, choice, betType = 'result', betAmount = 500) => {
-    console.log('💰 [Bet] Placement de pari:', { matchId, choice, betType, betAmount })
+    // log removed
     try {
       await virtualMatchService.placeBet(matchId, {
         bet_type: betType,
@@ -482,28 +550,20 @@ export default function VirtualMatch() {
         amount: betAmount,
       })
       toast.success('Pari placé avec succès !')
-      console.log('💰 [Bet] Pari placé, rechargement des matchs et du solde...')
-
-      // Rafraîchir le solde du wallet
-      await refreshBalance()
+      // log removed
 
       // Recharger les paris du match
       await loadMatchBets(matchId)
 
       loadMatches()
     } catch (error) {
-      console.error('❌ [Bet] Erreur lors du pari:', error)
+
       toast.error(error.response?.data?.message || 'Erreur lors du pari')
     }
-  }, [loadMatches, refreshBalance, loadMatchBets])
+  }, [loadMatches, loadMatchBets])
 
   const MatchCard = memo(({ match, isLive = false, currentTime }) => {
-    console.log('🎴 [MatchCard] Render', {
-      matchId: match.id,
-      team: `${match.team_home} vs ${match.team_away}`,
-      isLive,
-      score: match.score
-    })
+    // MatchCard render log removed for performance
 
     // State pour gérer le chargement des images (éviter le scintillement)
     const [homeLogoError, setHomeLogoError] = useState(false)
@@ -571,9 +631,9 @@ export default function VirtualMatch() {
       setShowBetModal(true)
     }
 
-    // Charger les paris de ce match
+    // Charger les paris de ce match (seulement pour les matchs virtuels)
     useEffect(() => {
-      if (!matchBets[match.id] && match.is_open_for_bets) {
+      if (!match.is_real_match && !matchBets[match.id] && match.is_open_for_bets) {
         loadMatchBets(match.id)
       }
     }, [match.id])
@@ -598,16 +658,23 @@ export default function VirtualMatch() {
               <CircleDot className="w-3 h-3 animate-pulse" />
               EN DIRECT
             </motion.span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Badge vrai match */}
+              {match.is_real_match && (
+                <span className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/50 rounded-full text-blue-400 text-[10px] font-bold uppercase">
+                  Real
+                </span>
+              )}
               {/* Minute actuelle et mi-temps */}
-              {liveData && (
+              {liveData && !match.is_real_match && (
                 <span className="px-3 py-1 bg-casino-gold/20 border border-casino-gold/50 rounded-full text-casino-gold text-xs font-bold">
                   {liveData.currentMinute}'
                   {liveData.isFirstHalf ? ' (1ère MT)' : ' (2ème MT)'}
                 </span>
               )}
               {match.league && (
-                <span className="text-xs px-2 py-1 bg-dark-300 text-gray-400 rounded">
+                <span className="text-xs px-2 py-1 bg-dark-300 text-gray-400 rounded flex items-center gap-1">
+                  {match.league_badge && <img src={match.league_badge} alt="" className="w-4 h-4 object-contain" />}
                   {match.league}
                 </span>
               )}
@@ -624,7 +691,7 @@ export default function VirtualMatch() {
             <div className="flex flex-col items-center flex-1">
               {match.team_home_logo && !homeLogoError ? (
                 <img
-                  src={`${API_BASE_URL}/images/${match.team_home_logo}`}
+                  src={resolveLogoUrl(match.team_home_logo)}
                   alt={match.team_home}
                   className="w-16 h-16 object-contain rounded-full bg-white p-1 mb-2"
                   onError={() => setHomeLogoError(true)}
@@ -652,7 +719,7 @@ export default function VirtualMatch() {
             <div className="flex flex-col items-center flex-1">
               {match.team_away_logo && !awayLogoError ? (
                 <img
-                  src={`${API_BASE_URL}/images/${match.team_away_logo}`}
+                  src={resolveLogoUrl(match.team_away_logo)}
                   alt={match.team_away}
                   className="w-16 h-16 object-contain rounded-full bg-white p-1 mb-2"
                   onError={() => setAwayLogoError(true)}
@@ -666,13 +733,36 @@ export default function VirtualMatch() {
             </div>
           </div>
 
+          {/* Match Events Timeline */}
+          {match.match_events && match.match_events.length > 0 && (
+            <div className="mt-3 space-y-1 max-h-24 overflow-y-auto">
+              {match.match_events.filter(e => e.type === 'goal' || e.type === 'penalty' || e.type === 'red_card' || e.type === 'yellow_card').slice(-5).map((evt, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-gray-400 px-2 py-1 bg-dark-300/50 rounded">
+                  <span className="text-casino-gold font-bold w-6">{evt.minute}'</span>
+                  <span>
+                    {evt.type === 'goal' && '⚽'}
+                    {evt.type === 'penalty' && '🎯'}
+                    {evt.type === 'yellow_card' && '🟨'}
+                    {evt.type === 'red_card' && '🟥'}
+                  </span>
+                  <span className="text-white">{evt.player || evt.team_name}</span>
+                  <span className="text-gray-500">({evt.team === 'home' ? match.team_home : match.team_away})</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Footer */}
           <div className="mt-4 pt-3 border-t border-gray-700 flex items-center justify-between text-xs text-gray-500">
             <span>Réf: {match.reference}</span>
-            <span className="flex items-center gap-1">
-              <Play className="w-3 h-3" />
-              {match.sport_type}
-            </span>
+            <div className="flex items-center gap-2">
+              {match.venue && <span>{match.venue}</span>}
+              {match.round && <span>J{match.round}</span>}
+              <span className="flex items-center gap-1">
+                <Play className="w-3 h-3" />
+                {match.sport_type}
+              </span>
+            </div>
           </div>
         </div>
       )
@@ -692,6 +782,18 @@ export default function VirtualMatch() {
         {/* Barre de progression */}
         {isApproaching && (
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-casino-gold to-transparent animate-pulse"></div>
+        )}
+
+        {/* Badge vrai match */}
+        {match.is_real_match && (
+          <div className="flex items-center gap-2 mb-3">
+            <span className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/50 rounded-full text-blue-400 text-[10px] font-bold uppercase">
+              Real Match
+            </span>
+            {match.venue && (
+              <span className="text-[10px] text-gray-500">{match.venue}</span>
+            )}
+          </div>
         )}
 
         {/* Décompte GÉANT au centre */}
@@ -728,9 +830,13 @@ export default function VirtualMatch() {
           </div>
           <div className="mt-2 flex items-center justify-center gap-2">
             {match.league && (
-              <span className="text-xs px-2 py-1 bg-dark-300 text-gray-400 rounded">
+              <span className="text-xs px-2 py-1 bg-dark-300 text-gray-400 rounded flex items-center gap-1">
+                {match.league_badge && <img src={match.league_badge} alt="" className="w-4 h-4 object-contain" />}
                 {match.league}
               </span>
+            )}
+            {match.round && (
+              <span className="text-xs px-2 py-1 bg-dark-300 text-gray-400 rounded">J{match.round}</span>
             )}
           </div>
         </div>
@@ -741,7 +847,7 @@ export default function VirtualMatch() {
           <div className="flex flex-col items-center flex-1">
             {match.team_home_logo && !homeLogoError ? (
               <img
-                src={`${API_BASE_URL}/images/${match.team_home_logo}`}
+                src={resolveLogoUrl(match.team_home_logo)}
                 alt={match.team_home}
                 className="w-14 h-14 object-contain rounded-full bg-white p-1 mb-2"
                 onError={() => setHomeLogoError(true)}
@@ -768,7 +874,7 @@ export default function VirtualMatch() {
           <div className="flex flex-col items-center flex-1">
             {match.team_away_logo && !awayLogoError ? (
               <img
-                src={`${API_BASE_URL}/images/${match.team_away_logo}`}
+                src={resolveLogoUrl(match.team_away_logo)}
                 alt={match.team_away}
                 className="w-14 h-14 object-contain rounded-full bg-white p-1 mb-2"
                 onError={() => setAwayLogoError(true)}
@@ -944,7 +1050,7 @@ export default function VirtualMatch() {
           <div className="flex flex-col items-center flex-1">
             {match.team_home_logo && !homeLogoError ? (
               <img
-                src={`${API_BASE_URL}/images/${match.team_home_logo}`}
+                src={resolveLogoUrl(match.team_home_logo)}
                 alt={match.team_home}
                 className="w-14 h-14 object-contain rounded-full bg-white p-1 mb-2"
                 onError={() => setHomeLogoError(true)}
@@ -981,7 +1087,7 @@ export default function VirtualMatch() {
           <div className="flex flex-col items-center flex-1">
             {match.team_away_logo && !awayLogoError ? (
               <img
-                src={`${API_BASE_URL}/images/${match.team_away_logo}`}
+                src={resolveLogoUrl(match.team_away_logo)}
                 alt={match.team_away}
                 className="w-14 h-14 object-contain rounded-full bg-white p-1 mb-2"
                 onError={() => setAwayLogoError(true)}
@@ -1355,7 +1461,6 @@ export default function VirtualMatch() {
             try {
               await virtualMatchService.deleteBet(betId)
               toast.success('Pari annulé et remboursé !')
-              await refreshBalance()
               await loadMatchBets(selectedMatchForBets.id)
             } catch (error) {
               toast.error(error.response?.data?.message || 'Erreur lors de l\'annulation')
@@ -1503,19 +1608,23 @@ const BetModal = memo(({ match, onClose, onPlaceBet, refreshBalance, betToEdit }
   const [existingBets, setExistingBets] = useState([]) // Paris existants de l'utilisateur
   const [isLoadingBets, setIsLoadingBets] = useState(true)
 
-  console.log('🎰 [BetModal] Render', { matchId: match.id, coupon, existingBets, betToEdit, odds: match.odds })
+  // log removed
 
   const isBettingOpen = match.is_open_for_bets
 
-  // Charger les paris existants de l'utilisateur pour ce match
+  // Charger les paris existants de l'utilisateur pour ce match (seulement matchs virtuels)
   useEffect(() => {
+    if (match.is_real_match) {
+      setIsLoadingBets(false)
+      return
+    }
     const loadExistingBets = async () => {
       try {
         setIsLoadingBets(true)
         const response = await virtualMatchService.getMatchBets(match.id)
         setExistingBets(response.data || [])
       } catch (error) {
-        console.error('❌ [BetModal] Erreur chargement paris:', error)
+
         // Pas de toast d'erreur si l'utilisateur n'est pas connecté
         if (error.response?.status !== 401) {
           toast.error('Erreur lors du chargement de vos paris')
@@ -1531,7 +1640,7 @@ const BetModal = memo(({ match, onClose, onPlaceBet, refreshBalance, betToEdit }
   // Pré-remplir le coupon si on édite un pari existant
   useEffect(() => {
     if (betToEdit) {
-      console.log('📝 [BetModal] Chargement pari à éditer:', betToEdit)
+      // log removed
 
       // Définir le montant
       setBetAmount(betToEdit.amount)
@@ -1600,12 +1709,18 @@ const BetModal = memo(({ match, onClose, onPlaceBet, refreshBalance, betToEdit }
       return
     }
 
-    console.log('💰 [BetModal] Placement coupon:', { matchId: match.id, coupon, betAmount, betToEdit })
+    // log removed
+
+    // Les matchs sport réels ne supportent pas encore les paris via l'API
+    if (match.is_real_match) {
+      toast.error('Les paris sur les matchs réels seront bientôt disponibles !')
+      return
+    }
 
     try {
       // Si on modifie un pari existant, le supprimer d'abord
       if (betToEdit) {
-        console.log('🗑️ [BetModal] Suppression ancien pari avant modification')
+        // log removed
         await virtualMatchService.deleteBet(betToEdit.id)
       }
 
@@ -1619,18 +1734,14 @@ const BetModal = memo(({ match, onClose, onPlaceBet, refreshBalance, betToEdit }
       setCoupon([]) // Vider le coupon après placement
 
       if (betToEdit) {
-        toast.success('✏️ Pari modifié avec succès !')
+        toast.success('Pari modifié avec succès !')
         onClose() // Fermer le modal après modification
       } else {
         toast.success('Nouveau pari placé ! Vous pouvez en placer un autre.')
       }
 
-      // Rafraîchir le solde du wallet
-      if (refreshBalance) {
-        await refreshBalance()
-      }
     } catch (error) {
-      console.error('❌ [BetModal] Erreur placement/modification pari:', error)
+
       toast.error(error.response?.data?.message || 'Erreur lors de l\'opération')
     }
   }
@@ -1645,12 +1756,8 @@ const BetModal = memo(({ match, onClose, onPlaceBet, refreshBalance, betToEdit }
       const response = await virtualMatchService.getMatchBets(match.id)
       setExistingBets(response.data || [])
 
-      // Rafraîchir le solde du wallet
-      if (refreshBalance) {
-        await refreshBalance()
-      }
     } catch (error) {
-      console.error('❌ [BetModal] Erreur suppression pari:', error)
+
       toast.error(error.response?.data?.message || 'Erreur lors de l\'annulation du pari')
     }
   }
@@ -1687,7 +1794,7 @@ const BetModal = memo(({ match, onClose, onPlaceBet, refreshBalance, betToEdit }
           <div className="flex items-center gap-2 sm:gap-3 bg-dark-300/50 rounded-lg p-2 sm:p-3">
             <div className="flex items-center gap-1 sm:gap-2 flex-1 min-w-0">
               {match.team_home_logo ? (
-                <img src={`${API_BASE_URL}/images/${match.team_home_logo}`} alt={match.team_home} className="w-6 h-6 sm:w-8 sm:h-8 object-contain rounded-full bg-white p-0.5 sm:p-1 flex-shrink-0" />
+                <img src={resolveLogoUrl(match.team_home_logo)} alt={match.team_home} className="w-6 h-6 sm:w-8 sm:h-8 object-contain rounded-full bg-white p-0.5 sm:p-1 flex-shrink-0" />
               ) : <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-casino rounded-full flex items-center justify-center text-xs flex-shrink-0">🏠</div>}
               <span className="text-xs sm:text-sm font-semibold text-white truncate">{match.team_home}</span>
             </div>
@@ -1697,7 +1804,7 @@ const BetModal = memo(({ match, onClose, onPlaceBet, refreshBalance, betToEdit }
             <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-end min-w-0">
               <span className="text-xs sm:text-sm font-semibold text-white truncate">{match.team_away}</span>
               {match.team_away_logo ? (
-                <img src={`${API_BASE_URL}/images/${match.team_away_logo}`} alt={match.team_away} className="w-6 h-6 sm:w-8 sm:h-8 object-contain rounded-full bg-white p-0.5 sm:p-1 flex-shrink-0" />
+                <img src={resolveLogoUrl(match.team_away_logo)} alt={match.team_away} className="w-6 h-6 sm:w-8 sm:h-8 object-contain rounded-full bg-white p-0.5 sm:p-1 flex-shrink-0" />
               ) : <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-casino-blue to-casino-purple rounded-full flex items-center justify-center text-xs flex-shrink-0">✈️</div>}
             </div>
           </div>

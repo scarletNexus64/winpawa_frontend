@@ -57,7 +57,7 @@ export default function SportsCard({ sport, index }) {
             {/* Icon & Badge */}
             <div className="flex items-start justify-between mb-3">
               <div className="text-4xl group-hover:scale-110 transition-transform duration-300">
-                {getIcon(sport.type)}
+                {sport.icon || '🏆'}
               </div>
               {!isInactive && sport.live && (
                 <div className="flex items-center gap-1 px-2 py-1 bg-red-500/20 border border-red-500/50 rounded-full">

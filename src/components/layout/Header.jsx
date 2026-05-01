@@ -69,6 +69,12 @@ export default function Header() {
             <Link to="/virtual-match" className="text-gray-300 hover:text-white transition-colors font-medium">
               Match Virtuel
             </Link>
+            <Link to="/sports" className="text-gray-300 hover:text-white transition-colors font-medium">
+              Sport
+            </Link>
+            <Link to="/paris" className="text-gray-300 hover:text-white transition-colors font-medium">
+              Paris
+            </Link>
             {user && (
               <Link to="/affiliate" className="text-gray-300 hover:text-white transition-colors font-medium">
                 Affiliation
